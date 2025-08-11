@@ -1,5 +1,6 @@
 name: Generate FDA Cybersecurity Documentation
 
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,8 +23,8 @@ jobs:
     - name: 🚀 Generate FDA Documentation
       env:
         BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
-        DEVICE_NAME: 'Mammography Cancer Detector'        
-        DEVICE_MANUFACTURER: 'HealthTech Inc'
+        DEVICE_NAME: 'SmartDose Insulin Pump Controller'        # ⚠️ CUSTOMIZE
+        DEVICE_MANUFACTURER: 'HealthTech Inc'                   # ⚠️ CUSTOMIZE
       run: |
         mkdir -p ./fda-output
         docker pull lensai/lensai-fda-cybersecurity:latest
@@ -42,4 +43,3 @@ jobs:
       with:
         name: fda-cybersecurity-docs-${{ github.run_id }}
         path: ./fda-output/
-
