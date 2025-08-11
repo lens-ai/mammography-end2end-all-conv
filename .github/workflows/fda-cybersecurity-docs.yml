@@ -37,7 +37,7 @@ jobs:
         
         # Force pull latest image (bypass cache)
         echo "📥 Pulling latest FDA generator Docker image..."
-        docker pull --no-cache lensai/lensai-fda-cybersecurity:latest
+        docker pull lensai/lensai-fda-cybersecurity:latest
         
         # Verify image architecture
         echo "🔍 Verifying image architecture..."
