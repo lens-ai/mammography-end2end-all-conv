@@ -1,11 +1,11 @@
-name: Generate FDA Cybersecurity Documentation
-
+name: 🏥 Generate FDA Cybersecurity Documentation
 
 on:
   workflow_dispatch:
     inputs:
       output_format:
         description: '📄 Documentation Format'
+        required: true
         default: 'full'
         type: choice
         options:
@@ -18,28 +18,83 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
       
     - name: 🚀 Generate FDA Documentation
       env:
         BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
-        DEVICE_NAME: 'SmartDose Insulin Pump Controller'        # ⚠️ CUSTOMIZE
-        DEVICE_MANUFACTURER: 'HealthTech Inc'                   # ⚠️ CUSTOMIZE
+        DEVICE_NAME: 'Mammography Cancer Detection'   # ⚠️ CUSTOMIZE THIS
+        DEVICE_MANUFACTURER: 'HealthTech Inc'              # ⚠️ CUSTOMIZE THIS
+        DEVICE_VERSION: ${{ github.ref_name || '1.0.0' }}
       run: |
+        echo "🏥 Generating FDA documentation for: ${{ github.repository }}"
+        echo "📋 Device: ${DEVICE_NAME} v${DEVICE_VERSION}"
+        echo "🏭 Manufacturer: ${DEVICE_MANUFACTURER}"
+        
+        # Create output directory
         mkdir -p ./fda-output
-        docker pull lensai/lensai-fda-cybersecurity:latest
+        
+        # Force pull latest image (bypass cache)
+        echo "📥 Pulling latest FDA generator Docker image..."
+        docker pull --no-cache lensai/lensai-fda-cybersecurity:latest
+        
+        # Verify image architecture
+        echo "🔍 Verifying image architecture..."
+        docker image inspect lensai/lensai-fda-cybersecurity:latest --format '{{.Architecture}}' || echo "Could not get architecture"
+        
+        # Run the FDA documentation generator
+        echo "🚀 Running FDA documentation generator..."
         docker run --rm \
           -e BASETEN_API_KEY="${BASETEN_API_KEY}" \
+          -e BASETEN_MODEL="deepseek-ai/DeepSeek-R1" \
           -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
           -e GITHUB_REPO="${{ github.repository }}" \
           -e DEVICE_NAME="${DEVICE_NAME}" \
+          -e DEVICE_VERSION="${DEVICE_VERSION}" \
           -e DEVICE_MANUFACTURER="${DEVICE_MANUFACTURER}" \
           -v $(pwd)/fda-output:/output \
           lensai/lensai-fda-cybersecurity:latest \
           --mode ${{ github.event.inputs.output_format || 'full' }} \
           --output-dir /output
-          
-    - uses: actions/upload-artifact@v4
+        
+        # List generated documents
+        echo ""
+        echo "📄 Generated FDA Documents:"
+        ls -la ./fda-output/ || echo "Check if documents were generated"
+        
+    - name: 📦 Upload FDA Documentation
+      uses: actions/upload-artifact@v4
       with:
         name: fda-cybersecurity-docs-${{ github.run_id }}
         path: ./fda-output/
+        retention-days: 90
+        if-no-files-found: warn
+        
+    - name: 🎉 Success Message
+      run: |
+        echo "╔════════════════════════════════════════════════════╗"
+        echo "║         ✅ FDA DOCUMENTATION GENERATED!           ║"
+        echo "╠════════════════════════════════════════════════════╣"
+        echo "║  Repository: ${{ github.repository }}"
+        echo "║  Device: ${DEVICE_NAME}"
+        echo "║  Download: Actions → Artifacts"
+        echo "╚════════════════════════════════════════════════════╝"
+        echo ""
+        echo "📥 To download your FDA documents:"
+        echo "1. Go to the Actions tab"
+        echo "2. Click on this workflow run"
+        echo "3. Download 'fda-cybersecurity-docs-${{ github.run_id }}'"
+        echo ""
+        echo "📋 Generated documents include:"
+        echo "✅ Enhanced SBOM with vulnerability analysis"
+        echo "✅ Architecture and security design"
+        echo "✅ Threat model (STRIDE analysis)"
+        echo "✅ Risk assessment and mitigation"
+        echo "✅ Security controls (FDA's 8 categories)"
+        echo "✅ Validation report and evidence"
+        echo "✅ Incident response procedures"
+        echo "✅ Vulnerability management"
+        echo "✅ Penetration test results"
+        echo "✅ Security update procedures"
+        echo "✅ Traceability matrix"%
