@@ -1,0 +1,45 @@
+name: Generate FDA Cybersecurity Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      output_format:
+        description: '📄 Documentation Format'
+        default: 'full'
+        type: choice
+        options:
+          - full      # All 11 required FDA documents
+          - quick     # 6 essential documents only
+
+jobs:
+  generate-fda-docs:
+    name: 🏥 Generate FDA Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: 🚀 Generate FDA Documentation
+      env:
+        BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+        DEVICE_NAME: 'Mammography Cancer Detector'        
+        DEVICE_MANUFACTURER: 'HealthTech Inc'
+      run: |
+        mkdir -p ./fda-output
+        docker pull lensai/lensai-fda-cybersecurity:latest
+        docker run --rm \
+          -e BASETEN_API_KEY="${BASETEN_API_KEY}" \
+          -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+          -e GITHUB_REPO="${{ github.repository }}" \
+          -e DEVICE_NAME="${DEVICE_NAME}" \
+          -e DEVICE_MANUFACTURER="${DEVICE_MANUFACTURER}" \
+          -v $(pwd)/fda-output:/output \
+          lensai/lensai-fda-cybersecurity:latest \
+          --mode ${{ github.event.inputs.output_format || 'full' }} \
+          --output-dir /output
+          
+    - uses: actions/upload-artifact@v4
+      with:
+        name: fda-cybersecurity-docs-${{ github.run_id }}
+        path: ./fda-output/
+
