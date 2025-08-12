@@ -130,4 +130,4 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY% 
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY%
