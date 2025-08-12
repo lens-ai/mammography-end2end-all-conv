@@ -1,100 +1,84 @@
-name: 🏥 Generate FDA Cybersecurity Documentation
+# 🏥 FDA Cybersecurity Documentation Generator - Client Workflow
+# Copy this file to .github/workflows/fda-docs.yml in your repository
+# Then add required secrets to your repository settings
+
+name: 🏥 Generate FDA Documentation
 
 on:
   workflow_dispatch:
     inputs:
-      output_format:
-        description: '📄 Documentation Format'
+      device_name:
+        description: 'Your Medical Device Name'
         required: true
+        default: 'My Medical Device'
+      device_manufacturer:
+        description: 'Your Company Name'
+        required: true
+        default: 'My Company'
+      device_version:
+        description: 'Software Version'
+        required: false
+        default: '1.0.0'
+      output_format:
+        description: 'Documentation Scope'
+        required: false
         default: 'full'
         type: choice
         options:
-          - full      # All 11 required FDA documents
-          - quick     # 6 essential documents only
+          - full
+          - incremental
 
 jobs:
   generate-fda-docs:
-    name: 🏥 Generate FDA Documentation
+    name: 🏥 Generate FDA Documents
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout Repository
+    - name: 📋 Checkout Repository
       uses: actions/checkout@v4
-      
-    - name: 🚀 Generate FDA Documentation
-      env:
-        BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
-        DEVICE_NAME: 'Mammography Cancer Detection'   # ⚠️ CUSTOMIZE THIS
-        DEVICE_MANUFACTURER: 'HealthTech Inc'              # ⚠️ CUSTOMIZE THIS
-        DEVICE_VERSION: ${{ github.ref_name || '1.0.0' }}
-      run: |
-        echo "🏥 Generating FDA documentation for: ${{ github.repository }}"
-        echo "📋 Device: ${DEVICE_NAME} v${DEVICE_VERSION}"
-        echo "🏭 Manufacturer: ${DEVICE_MANUFACTURER}"
+    
+    - name: 🏥 Generate FDA Documentation
+      uses: lens-ai/lensai-fda-cybersecurity@v1
+      with:
+        # Required inputs
+        baseten_api_key: ${{ secrets.BASETEN_API_KEY }}
+        device_name: ${{ github.event.inputs.device_name }}
+        device_manufacturer: ${{ github.event.inputs.device_manufacturer }}
+        device_version: ${{ github.event.inputs.device_version }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        target_repository: ${{ github.repository }}
+        output_format: ${{ github.event.inputs.output_format }}
         
-        # Create output directory
-        mkdir -p ./fda-output
-        
-        # Force pull latest image (bypass cache)
-        echo "📥 Pulling latest FDA generator Docker image..."
-        docker pull lensai/lensai-fda-cybersecurity:latest
-        
-        # Verify image architecture
-        echo "🔍 Verifying image architecture..."
-        docker image inspect lensai/lensai-fda-cybersecurity:latest --format '{{.Architecture}}' || echo "Could not get architecture"
-        
-        # Run the FDA documentation generator
-        echo "🚀 Running FDA documentation generator..."
-        docker run --rm \
-          -e BASETEN_API_KEY="${BASETEN_API_KEY}" \
-          -e BASETEN_MODEL="deepseek-ai/DeepSeek-R1" \
-          -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
-          -e GITHUB_REPO="${{ github.repository }}" \
-          -e DEVICE_NAME="${DEVICE_NAME}" \
-          -e DEVICE_VERSION="${DEVICE_VERSION}" \
-          -e DEVICE_MANUFACTURER="${DEVICE_MANUFACTURER}" \
-          -v $(pwd)/fda-output:/output \
-          lensai/lensai-fda-cybersecurity:latest \
-          --mode ${{ github.event.inputs.output_format || 'full' }} \
-          --output-dir /output
-        
-        # List generated documents
-        echo ""
-        echo "📄 Generated FDA Documents:"
-        ls -la ./fda-output/ || echo "Check if documents were generated"
-        
-    - name: 📦 Upload FDA Documentation
+        # Optional Atlassian Integration (uncomment if you use Jira/Confluence)
+        # jira_url: ${{ secrets.JIRA_URL }}
+        # jira_email: ${{ secrets.JIRA_EMAIL }}
+        # jira_api_token: ${{ secrets.JIRA_API_TOKEN }}
+        # jira_project_key: ${{ secrets.JIRA_PROJECT_KEY }}
+        # confluence_url: ${{ secrets.CONFLUENCE_URL }}
+        # confluence_email: ${{ secrets.CONFLUENCE_EMAIL }}
+        # confluence_api_token: ${{ secrets.CONFLUENCE_API_TOKEN }}
+        # confluence_space_key: ${{ secrets.CONFLUENCE_SPACE_KEY }}
+    
+    - name: 📊 Upload FDA Documents
       uses: actions/upload-artifact@v4
       with:
         name: fda-cybersecurity-docs-${{ github.run_id }}
         path: ./fda-output/
-        retention-days: 90
-        if-no-files-found: warn
-        
-    - name: 🎉 Success Message
+        retention-days: 30
+        if-no-files-found: error
+    
+    - name: 📋 Summary
       run: |
-        echo "╔════════════════════════════════════════════════════╗"
-        echo "║         ✅ FDA DOCUMENTATION GENERATED!           ║"
-        echo "╠════════════════════════════════════════════════════╣"
-        echo "║  Repository: ${{ github.repository }}"
-        echo "║  Device: ${DEVICE_NAME}"
-        echo "║  Download: Actions → Artifacts"
-        echo "╚════════════════════════════════════════════════════╝"
-        echo ""
-        echo "📥 To download your FDA documents:"
-        echo "1. Go to the Actions tab"
-        echo "2. Click on this workflow run"
-        echo "3. Download 'fda-cybersecurity-docs-${{ github.run_id }}'"
-        echo ""
-        echo "📋 Generated documents include:"
-        echo "✅ Enhanced SBOM with vulnerability analysis"
-        echo "✅ Architecture and security design"
-        echo "✅ Threat model (STRIDE analysis)"
-        echo "✅ Risk assessment and mitigation"
-        echo "✅ Security controls (FDA's 8 categories)"
-        echo "✅ Validation report and evidence"
-        echo "✅ Incident response procedures"
-        echo "✅ Vulnerability management"
-        echo "✅ Penetration test results"
-        echo "✅ Security update procedures"
-        echo "✅ Traceability matrix"%
+        echo "## 🏥 FDA Documentation Generated" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Success!" >> $GITHUB_STEP_SUMMARY
+        echo "- **Device**: ${{ github.event.inputs.device_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Manufacturer**: ${{ github.event.inputs.device_manufacturer }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ github.event.inputs.device_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Format**: ${{ github.event.inputs.output_format }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Documents**: $(find ./fda-output -name "*.md" -type f | wc -l)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
+        find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY
