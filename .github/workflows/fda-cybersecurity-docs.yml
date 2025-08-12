@@ -36,28 +36,77 @@ jobs:
     steps:
     - name: 📋 Checkout Repository
       uses: actions/checkout@v4
-    
+
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: 🏥 Generate FDA Documentation
-      uses: lens-ai/lensai-fda-cybersecurity@v1
-      with:
-        # Required inputs
-        baseten_api_key: ${{ secrets.BASETEN_API_KEY }}
-        device_name: ${{ github.event.inputs.device_name }}
-        device_manufacturer: ${{ github.event.inputs.device_manufacturer }}
-        device_version: ${{ github.event.inputs.device_version }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        target_repository: ${{ github.repository }}
-        output_format: ${{ github.event.inputs.output_format }}
+      run: |
+        echo "🚀 Starting FDA documentation generation..."
+        echo "📊 Analyzing repository: ${{ github.repository }}"
+        echo "🏥 Device: ${{ github.event.inputs.device_name }} v${{ github.event.inputs.device_version }}"
         
-        # Optional Atlassian Integration (uncomment if you use Jira/Confluence)
-        # jira_url: ${{ secrets.JIRA_URL }}
-        # jira_email: ${{ secrets.JIRA_EMAIL }}
-        # jira_api_token: ${{ secrets.JIRA_API_TOKEN }}
-        # jira_project_key: ${{ secrets.JIRA_PROJECT_KEY }}
-        # confluence_url: ${{ secrets.CONFLUENCE_URL }}
-        # confluence_email: ${{ secrets.CONFLUENCE_EMAIL }}
-        # confluence_api_token: ${{ secrets.CONFLUENCE_API_TOKEN }}
-        # confluence_space_key: ${{ secrets.CONFLUENCE_SPACE_KEY }}
+        # Create output directory
+        mkdir -p ./fda-output
+        
+        # Pull latest FDA generator container (built by lens-ai/lensai-fda-cybersecurity quick-deploy)
+        echo "📦 Pulling latest FDA Generator container..."
+        docker pull lensai/lensai-fda-cybersecurity:latest
+        
+        # Pull SBOM analysis tools
+        echo "📦 Pulling SBOM analysis tools..."
+        docker pull anchore/syft:latest
+        docker pull anchore/grype:latest
+        
+        # Record start time
+        START_TIME=$(date +%s)
+        
+        # Run FDA documentation generator
+        docker run --rm \
+          -e BASETEN_API_KEY="${{ secrets.BASETEN_API_KEY }}" \
+          -e BASETEN_MODEL="deepseek-ai/DeepSeek-R1" \
+          -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+          -e GITHUB_REPO="${{ github.repository }}" \
+          -e DEVICE_NAME="${{ github.event.inputs.device_name }}" \
+          -e DEVICE_VERSION="${{ github.event.inputs.device_version }}" \
+          -e DEVICE_MANUFACTURER="${{ github.event.inputs.device_manufacturer }}" \
+          -e JIRA_URL="${{ secrets.JIRA_URL }}" \
+          -e JIRA_EMAIL="${{ secrets.JIRA_EMAIL }}" \
+          -e JIRA_API_TOKEN="${{ secrets.JIRA_API_TOKEN }}" \
+          -e JIRA_PROJECT_KEY="${{ secrets.JIRA_PROJECT_KEY }}" \
+          -e CONFLUENCE_URL="${{ secrets.CONFLUENCE_URL }}" \
+          -e CONFLUENCE_EMAIL="${{ secrets.CONFLUENCE_EMAIL }}" \
+          -e CONFLUENCE_API_TOKEN="${{ secrets.CONFLUENCE_API_TOKEN }}" \
+          -e CONFLUENCE_SPACE_KEY="${{ secrets.CONFLUENCE_SPACE_KEY }}" \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v ${{ github.workspace }}:/repo:ro \
+          -v ${{ github.workspace }}/fda-output:/output \
+          --network host \
+          lensai/lensai-fda-cybersecurity:latest \
+          --mode ${{ github.event.inputs.output_format }} --output-dir /output
+        
+        # Calculate generation time
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        
+        # Count generated documents
+        DOC_COUNT=$(find ./fda-output -name "*.md" -type f | wc -l)
+        
+        # Calculate success rate
+        if [ "${{ github.event.inputs.output_format }}" = "full" ]; then
+          TOTAL_DOCS=11
+        else
+          TOTAL_DOCS=6  # Essential documents only
+        fi
+        SUCCESS_RATE=$(( (DOC_COUNT * 100) / TOTAL_DOCS ))
+        
+        echo "📊 GENERATION RESULTS:"
+        echo "   Documents Generated: $DOC_COUNT/$TOTAL_DOCS ($SUCCESS_RATE%)"
+        echo "   Generation Time: ${DURATION}s"
+        echo "   Output Directory: ./fda-output/"
+        
+        echo "📄 Generated FDA Documents:"
+        find ./fda-output -name "*.md" -type f -exec basename {} \; | sort
     
     - name: 📊 Upload FDA Documents
       uses: actions/upload-artifact@v4
@@ -81,4 +130,4 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY% 
