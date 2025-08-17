@@ -45,6 +45,10 @@ jobs:
         echo "📦 Pulling FDA Generator container from Docker Hub..."
         docker pull lensai/lensai-fda-cybersecurity:latest
         
+        echo "📦 Pulling MCP containers..."
+        docker pull mcp/github:latest || echo "⚠️ Failed to pull mcp/github"
+        docker pull mcp/atlassian:latest || echo "⚠️ Failed to pull mcp/atlassian"
+        
         echo "📦 Pulling SBOM generation tools..."
         docker pull anchore/syft:latest
         docker pull anchore/grype:latest
@@ -136,4 +140,4 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY%
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY% 
