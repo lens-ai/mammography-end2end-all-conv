@@ -53,6 +53,9 @@ jobs:
         echo "📦 Pulling latest FDA Generator container..."
         docker pull lensai/lensai-fda-cybersecurity:latest
         
+        # Note: If you encounter JSON serialization errors, ensure you have the latest image
+        # The image should include fixes for CodeElement serialization (updated after Aug 17, 2025)
+        
         # Pull SBOM analysis tools
         echo "📦 Pulling SBOM analysis tools..."
         docker pull anchore/syft:latest
@@ -62,6 +65,8 @@ jobs:
         START_TIME=$(date +%s)
         
         # Run FDA documentation generator
+        # Note: MCP containers (mcp/github, mcp/atlassian) are not available on Docker Hub
+        # The generator will work without them but won't fetch real-time data from GitHub/Jira
         docker run --rm \
           -e BASETEN_API_KEY="${{ secrets.BASETEN_API_KEY }}" \
           -e BASETEN_MODEL="deepseek-ai/DeepSeek-R1" \
@@ -78,10 +83,8 @@ jobs:
           -e CONFLUENCE_EMAIL="${{ secrets.CONFLUENCE_EMAIL }}" \
           -e CONFLUENCE_API_TOKEN="${{ secrets.CONFLUENCE_API_TOKEN }}" \
           -e CONFLUENCE_SPACE_KEY="${{ secrets.CONFLUENCE_SPACE_KEY }}" \
-          -v /var/run/docker.sock:/var/run/docker.sock \
           -v ${{ github.workspace }}:/repo:ro \
           -v ${{ github.workspace }}/fda-output:/output \
-          --network host \
           lensai/lensai-fda-cybersecurity:latest \
           python -m src.main --mode ${{ github.event.inputs.output_format }} --output-dir /output
         
@@ -130,4 +133,4 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY% 
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY
