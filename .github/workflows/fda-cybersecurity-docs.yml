@@ -83,7 +83,7 @@ jobs:
           -v ${{ github.workspace }}/fda-output:/output \
           --network host \
           lensai/lensai-fda-cybersecurity:latest \
-          --mode ${{ github.event.inputs.output_format }} --output-dir /output
+          python -m src.main --mode ${{ github.event.inputs.output_format }} --output-dir /output
         
         # Calculate generation time
         END_TIME=$(date +%s)
@@ -130,4 +130,4 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY%
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY% 
