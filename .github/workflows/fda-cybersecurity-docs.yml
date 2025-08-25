@@ -42,8 +42,23 @@ jobs:
 
     - name: 📦 Pull FDA Generator and Tools
       run: |
-        echo "📦 Pulling FDA Generator container from Docker Hub..."
-        docker pull lensai/lensai-fda-cybersecurity:latest
+        # Define FDA generator version (pin to specific version for stability)
+        # Options: 
+        #   - Specific version: 1.2.3
+        #   - Minor version: 1.2 (auto-updates patch versions)
+        #   - Major version: 1 (auto-updates minor & patch)
+        #   - Latest: latest (always newest, less stable)
+        FDA_VERSION="${{ vars.FDA_GENERATOR_VERSION || '1' }}"  # Default to major version 1
+        
+        echo "📦 Pulling FDA Generator container (version: ${FDA_VERSION})..."
+        if docker pull lensai/lensai-fda-cybersecurity:${FDA_VERSION}; then
+          echo "✅ Using FDA Generator version: ${FDA_VERSION}"
+          # Tag it as 'latest' locally for consistency
+          docker tag lensai/lensai-fda-cybersecurity:${FDA_VERSION} lensai/lensai-fda-cybersecurity:latest
+        else
+          echo "⚠️ Version ${FDA_VERSION} not found, falling back to latest..."
+          docker pull lensai/lensai-fda-cybersecurity:latest
+        fi
         
         echo "📦 Pulling official MCP containers from Docker Hub..."
         docker pull mcp/github:latest
@@ -77,8 +92,8 @@ jobs:
         # Run FDA documentation generator with MCP Docker spawn mode
         # The container will spawn MCP containers internally if available
         docker run --rm \
-          -e BASETEN_API_KEY="${{ secrets.BASETEN_API_KEY }}" \
-          -e BASETEN_MODEL="deepseek-ai/DeepSeek-R1" \
+          -e LENSAI_API_KEY="${{ secrets.LENSAI_API_KEY }}" \
+          -e LENSAI_MODEL="deepseek-ai/DeepSeek-R1" \
           -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
           -e GITHUB_REPO="${{ github.repository }}" \
           -e DEVICE_NAME="${{ github.event.inputs.device_name }}" \
@@ -92,6 +107,14 @@ jobs:
           -e CONFLUENCE_EMAIL="${{ secrets.CONFLUENCE_EMAIL }}" \
           -e CONFLUENCE_API_TOKEN="${{ secrets.CONFLUENCE_API_TOKEN }}" \
           -e CONFLUENCE_SPACE_KEY="${{ secrets.CONFLUENCE_SPACE_KEY }}" \
+          -e JIRA_RECENT_DAYS="90" \
+          -e JIRA_SECURITY_DAYS="180" \
+          -e JIRA_DEFAULT_DAYS="60" \
+          -e FDA_MIN_GITHUB_COMMITS="3" \
+          -e FDA_MIN_SEMGREP_FINDINGS="0" \
+          -e FDA_MIN_JIRA_TICKETS="0" \
+          -e FDA_MIN_CONFLUENCE_PAGES="0" \
+          -e FDA_MIN_SBOM_COMPONENTS="5" \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v ${{ github.workspace }}:/repo:ro \
           -v ${{ github.workspace }}/fda-output:/output \
@@ -143,4 +166,24 @@ jobs:
         echo "### 📄 Generated Files:" >> $GITHUB_STEP_SUMMARY
         find ./fda-output -name "*.md" -type f -exec basename {} \; | sort | sed 's/^/- ✅ /' >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY%
+        echo "Download the artifacts above to get your FDA cybersecurity documentation!" >> $GITHUB_STEP_SUMMARY
+
+# === CONFIGURATION NOTES ===
+#
+# ENVIRONMENT VARIABLES (NEW!):
+# The following environment variables can be adjusted based on your needs:
+#
+# JIRA Time Windows:
+# - JIRA_RECENT_DAYS: Days to look back for recent issues (default: 30, example uses 90)
+# - JIRA_SECURITY_DAYS: Days to look back for security issues (default: 60, example uses 180)
+# - JIRA_DEFAULT_DAYS: Default time window (default: 30, example uses 60)
+#
+# FDA Evidence Requirements:
+# - FDA_MIN_GITHUB_COMMITS: Minimum GitHub commits required (default: 3)
+# - FDA_MIN_SEMGREP_FINDINGS: Minimum Semgrep findings (default: 0 = optional)
+# - FDA_MIN_JIRA_TICKETS: Minimum JIRA tickets (default: 1, example uses 0 = optional)
+# - FDA_MIN_CONFLUENCE_PAGES: Minimum Confluence pages (default: 0 = optional)
+# - FDA_MIN_SBOM_COMPONENTS: Minimum SBOM components (default: 10)
+#
+# Adjust these values based on your project's maturity and activity level.
+# For new projects with limited history, consider setting lower minimums.%
